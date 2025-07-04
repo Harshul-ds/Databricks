@@ -160,3 +160,102 @@ Docs: <https://docs.databricks.com/administration-guide/account-settings/usage.h
 Docs: <https://docs.databricks.com/dev-tools/databricks-connect.html>
 
 Run Spark code locally against remote cluster – perfect for unit tests.
+
+---
+
+# Appendix – Deep-Dive Topics
+
+## A1. Spark Programming Abstractions
+
+| Abstraction | What it is | When to use |
+|-------------|------------|-------------|
+| **RDD (Resilient Distributed Dataset)** | Low-level, immutable distributed collection of JVM objects. Provides explicit transformation (`map`, `flatMap`, `reduceByKey`, …) and action APIs. | Fine-grained control, custom partitioning, calling non-SQL/typed functions, or when you need to maintain lineage for fault tolerance. |
+| **DataFrame** | Distributed table backed by Catalyst logical/physical plans. Columnar; lazily optimized. Supports SQL, Python, Scala, Java. | Almost always the default for ETL, analytics, ML feature prep. |
+| **Dataset** (Scala/Java only) | Typed DataFrame (`Dataset[CaseClass]`) with compile-time type safety and object encoders. | When you need both static typing and Catalyst optimizations. |
+
+Rule of thumb: start with DataFrame; drop to RDDs for custom algorithms or when you need per-element control (e.g., graph algorithms, deep nested parsing).
+
+## A2. Execution Flow (Driver → DAG → Tasks)
+1. **Transformation building** – Your code builds a logical plan (lazy).
+2. **Catalyst optimization** – Rules prune projections, push predicates, collapse filters.
+3. **Physical planning** – Multiple physical plans are costed; cheapest wins.
+4. **DAG Scheduler** – Logical plan → stages separated by shuffle boundaries.
+5. **Task Scheduler** – Launches tasks on executors via cluster manager.
+6. **Execution & Shuffle** – Intermediate data written to disk/network; `ShuffleManager` handles sort/hash.
+7. **Result handling** – Driver fetches action results, materializes DataFrame, or writes to sink.
+
+Key configs to tune:
+```conf
+spark.sql.shuffle.partitions   # default 200; adjust ↓ for small data, ↑ for huge joins
+spark.sql.adaptive.enabled     # turn on AQE (Adaptive Query Execution)
+```
+
+## A3. Partitioning & Data Skew
+• Partitions should be sized 100-512 MB for optimal shuffle.  
+• Use `repartition(col)` or `repartitionByRange()` for even key distribution.  
+• Severe skew symptoms: single task 10× slower, spill to disk, executor timeout.
+
+Mitigations: salting keys, auto-skew join (`spark.sql.adaptive.skewJoin.enabled`), broadcast small side.
+
+## A4. Shuffle Mechanics
+Shuffle writes map-side output to local disks, creates index files, notifies driver; reduce tasks pull using Netty.
+
+Tuning flags:
+```
+spark.shuffle.compress true
+spark.reducer.maxSizeInFlight 48m
+spark.shuffle.spill true
+```
+
+## A5. Broadcast Variables & Accumulators
+| Feature | Purpose |
+|---------|---------|
+| **Broadcast variable** | Ship a read-only value (lookup table, model weights) once per executor. Use `broadcast(df)` or `sc.broadcast(obj)` |
+| **Accumulator** | Distributed write-only counter used for instrumentation (e.g., malformed rows).|
+
+AQE can auto-decide broadcast joins when one side < 10% shuffle threshold.
+
+## A6. Caching & Persistence
+`df.cache()` uses in-memory columnar cache (off-heap in Photon).  
+Storage levels: `MEMORY_ONLY`, `MEMORY_AND_DISK`, `DISK_ONLY`, `OFF_HEAP`.
+
+Tip: always `count()` after `cache()` in interactive workflows to trigger materialization.
+
+## A7. Checkpointing & Lineage Truncation
+For long lineage chains (>100 transformations) or iterative algorithms, call `sc.setCheckpointDir("dbfs:/checkpoints")` and `rdd.checkpoint()` to avoid stack overflows and huge DAGs.
+
+## A8. Tungsten & Whole-Stage Codegen
+Spark 2+ rewrote physical engine to generate Java bytecode that directly manipulates binary rows. Yields big gains in CPU & GC. Enabled by default; tune via `spark.sql.codegen.wholeStage`.
+
+Photon (Databricks) replaces this Java layer with vectorized C++ for DataFrame/SQL paths.
+
+## A9. Delta Lake Internals (extra detail)
+• **_delta_log** JSON → PARQUET checkpoint every n commits.  
+• **OPTIMIZE** uses bin-packing; picks files < 128 MB.  
+• **ZORDER** builds locality maps, rewriting files to cluster columns.
+
+Isolation levels:
+| Operation | Locking/Transaction |
+|-----------|--------------------|
+| Read | Snapshot-isolation via version ID |
+| Write | Optimistic concurrency; commit fails on overlapping writes |
+
+## A10. Unity Catalog Security Model
+| Level | Principal | Grants |
+|-------|-----------|--------|
+| Catalog | account-level admin | `USE CATALOG` |
+| Schema | workspace groups | `CREATE TABLE`, `USAGE` |
+| Table  | workspace groups | `SELECT`, `MODIFY` |
+
+All grants are audited via system tables (`system.access`).
+
+## A11. Monitoring Stack
+• **Ganglia UI** → executor metrics (heap, CPU).  
+• **Spark UI** → per-stage times, shuffle spill, skew visualization.  
+• **Databricks metrics API** → scrapeable Prometheus endpoint (`/metrics`).  
+• **Billable Usage Logs** → raw DBU, node hours, photon hours.
+
+## Further Reading
+1. *Spark: The Definitive Guide* – Chambers & Zaharia.  
+2. *Delta Lake Internals* – Venkatesh & Sale.
+
