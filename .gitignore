@@ -3,3 +3,6 @@ __pycache__/
 *.egg-info/
 # Ignore demo output
 /demo_tombstones.json
+
+# Private internal docs
+/docs_private/
