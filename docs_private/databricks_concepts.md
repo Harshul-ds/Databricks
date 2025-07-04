@@ -1,7 +1,5 @@
-# Databricks Field Manual – **Internal Use Only**
-*(This file is on your local machine and git-ignored so it never leaves your laptop or a private repo clone.)*
+# Databricks Field Manual
 
----
 
 ## 1. Workspaces & Accounts  
 A **workspace** is an isolated compute / metadata plane accessible via a unique URL (e.g. `https://acme.cloud.databricks.com`). An **account** may own multiple workspaces; it also owns Unity Catalog and billing.
