@@ -4,5 +4,3 @@ __pycache__/
 # Ignore demo output
 /demo_tombstones.json
 
-# Private internal docs
-/docs_private/
