@@ -1,0 +1,29 @@
+[
+  {
+    "Event": "SparkListenerTaskEnd",
+    "Stage ID": 0,
+    "Task Info": {"Duration": 120},
+    "Task Metrics": {
+      "Shuffle Read Bytes": 1048576,
+      "Shuffle Write Bytes": 524288
+    }
+  },
+  {
+    "Event": "SparkListenerTaskEnd",
+    "Stage ID": 0,
+    "Task Info": {"Duration": 90},
+    "Task Metrics": {
+      "Shuffle Read Bytes": 2097152,
+      "Shuffle Write Bytes": 0
+    }
+  },
+  {
+    "Event": "SparkListenerTaskEnd",
+    "Stage ID": 1,
+    "Task Info": {"Duration": 200},
+    "Task Metrics": {
+      "Shuffle Read Bytes": 0,
+      "Shuffle Write Bytes": 1048576
+    }
+  }
+]

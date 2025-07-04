@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+# Ignore demo output
+/demo_tombstones.json
