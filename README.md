@@ -173,11 +173,4 @@ GitHub Actions workflow `/.github/workflows/prometheus.yml`:
 
 Apache 2.0
 
----
-
-Built with 🧠 to accelerate every Databricks engineer.
-
----
-
-This README intentionally contains more detail than typical OSS projects to double as the “interview narrative” of the project.
 
