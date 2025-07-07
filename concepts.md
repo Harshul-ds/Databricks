@@ -4,7 +4,7 @@ The Unity Catalog Metastore is a centralized, account-level "card catalog" for a
 It provides a single place to govern permissions using SQL, enables seamless data sharing without duplication, and automatically captures data lineage.
 This transforms your data lake from a collection of silos into a unified, secure, and trustworthy enterprise data platform
 
-##Photon
+## Photon
 
 Photon is Databricks's proprietary, high-performance query engine, written from the ground up in C++, that completely replaces the standard Spark execution engine. It provides massive speedups for SQL and DataFrame workloads by avoiding the bottlenecks of the Java Virtual Machine (JVM) and leveraging modern CPU hardware capabilities. It is not a separate product but a "supercharger" you enable on a standard Databracks cluster.
 The Core "Why": Attacking the JVM's Weaknesses
